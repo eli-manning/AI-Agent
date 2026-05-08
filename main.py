@@ -1,32 +1,48 @@
 import os
 from dotenv import load_dotenv
 from google import genai
+from google.genai import types, errors
+import argparse
 
 
 def main():
-    # load and create client
+    # load and create client and starter objects
     load_dotenv()
     api_key = os.environ.get("GEMINI_API_KEY")
     if api_key is None:
         raise RuntimeError("GEMINI_API_KEY environment variable not set")
     client = genai.Client(api_key=api_key)
+    parser = argparse.ArgumentParser(description="Chatbot")
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
+    parser.add_argument("user_prompt", type=str, help="User prompt")
+    args = parser.parse_args()
 
-    # generate content
+    messages = [types.Content(
+        role="user", parts=[types.Part(text=args.user_prompt)])]
+    verbose = args.verbose
+
+    generate_content(client, messages, verbose)
+    
+
+def generate_content(client, messages, verbose=False):
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash", contents="Why is Boot.dev such a great place to learn backend development? Use one paragraph maximum.")
+            model="gemini-2.5-flash", contents=messages)
         if response.usage_metadata is None:
             raise RuntimeError("Response is missing usage metadata")
-        print("Prompt tokens:", response.usage_metadata.prompt_token_count)
-        print("Response tokens:", response.usage_metadata.candidates_token_count)
+        if verbose:
+            print("User prompt:", messages[0].parts[0].text)
+            print("Prompt tokens:", response.usage_metadata.prompt_token_count)
+            print("Response tokens:", response.usage_metadata.candidates_token_count)
         print(response.text)
 
     # Catch API errors, especially rate limits
-    except genai.errors.ClientError as e:
+    except errors.ClientError as e:
         if "429" in str(e):
             print("Rate limit exceeded. Please try again later.")
         else:
             print("Client error:", e)
+
 
 if __name__ == "__main__":
     main()
