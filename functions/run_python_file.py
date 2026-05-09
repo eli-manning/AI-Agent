@@ -1,6 +1,6 @@
 from functions.validate_path import validate_path
 import subprocess
-
+from google.genai import types
 
 def run_python_file(working_directory, file_path, args=None):
     target, error = validate_path(
@@ -11,27 +11,45 @@ def run_python_file(working_directory, file_path, args=None):
         command = ["python", target]
         if args:
             command.extend(args)
+        # timeout prevents hanging indefinitely on scripts with infinite loops
+        # cwd ensures relative file operations inside the script resolve correctly
         subprocess_result = subprocess.run(
             command, capture_output=True, text=True, cwd=working_directory, timeout=30)
         output_parts = []
 
-        # 1. Check return code first
         if subprocess_result.returncode != 0:
             output_parts.append(
                 f"Process exited with code {subprocess_result.returncode}")
 
-        # 2. Check for "No output produced"
         if not subprocess_result.stdout and not subprocess_result.stderr:
             output_parts.append("No output produced")
         else:
-            # 3. Otherwise, add STDOUT and STDERR (if they have content)
             if subprocess_result.stdout:
                 output_parts.append(f"STDOUT: {subprocess_result.stdout}")
             if subprocess_result.stderr:
                 output_parts.append(f"STDERR: {subprocess_result.stderr}")
 
-        # Join everything with newlines
         return "\n".join(output_parts)
     
     except Exception as e:
         return f"Error: executing Python file: {str(e)}"
+
+schema_run_python_file = types.FunctionDeclaration(
+    name="run_python_file",
+    description="Executes a Python file at the specified path relative to the working directory and returns its output",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "file_path": types.Schema(
+                type=types.Type.STRING,
+                description="Path to the Python file to execute, relative to the working directory",
+            ),
+            "args": types.Schema(
+                type=types.Type.ARRAY,
+                items=types.Schema(type=types.Type.STRING),
+                description="Optional list of command-line arguments to pass to the script",
+            ),
+        },
+        required=["file_path"],
+    ),
+)
