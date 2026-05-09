@@ -1,18 +1,11 @@
 import os
-
+from functions.validate_path import validate_path
 
 def get_files_info(working_directory, directory="."):
+    target_dir, error = validate_path(working_directory, directory)
+    if error:
+        return error
     try:
-        working_absolute = os.path.abspath(working_directory)
-        target_dir = os.path.normpath(
-            os.path.join(working_absolute, directory))
-        valid_target_dir = os.path.commonpath(
-            [working_absolute, target_dir]) == working_absolute
-        if not valid_target_dir:
-            return f'Error: Cannot list "{directory}" as it is outside the permitted working directory'
-        if not os.path.exists(target_dir):
-            return f'Error: "{directory}" is not a directory'
-
         files_info = []
         for item in os.listdir(target_dir):
             item_path = os.path.join(target_dir, item)

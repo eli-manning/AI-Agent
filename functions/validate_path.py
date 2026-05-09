@@ -1,0 +1,29 @@
+import os
+
+
+def validate_path(working_directory, path, check_is_file=False, writing=False):
+    try:
+        working_absolute = os.path.abspath(working_directory)
+        target_path = os.path.normpath(os.path.join(working_absolute, path))
+
+        # 1. Security Check
+        if os.path.commonpath([working_absolute, target_path]) != working_absolute:
+            action = "write to" if writing else "access"
+            return None, f'Error: Cannot {action} "{path}" as it is outside the permitted working directory'
+
+        # 2. Check if it's a directory
+        # We can't write a file if a directory with the same name already exists
+        if writing and os.path.isdir(target_path):
+            return None, f'Error: Cannot write to "{path}" as it is a directory'
+
+        # 3. Existence Check - Only for Reading
+        if not writing and not os.path.exists(target_path):
+            return None, f'Error: "{path}" does not exist'
+
+        # 4. Type Check - Only for Reading
+        if not writing and check_is_file and not os.path.isfile(target_path):
+            return None, f'Error: File not found or is not a regular file: "{path}"'
+
+        return target_path, None
+    except Exception as e:
+        return None, f"Error: {str(e)}"
