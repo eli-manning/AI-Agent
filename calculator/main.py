@@ -1,5 +1,3 @@
-# calculator/main.py
-
 import sys
 from pkg.calculator import Calculator
 from pkg.render import format_json_output
@@ -13,6 +11,7 @@ def main():
         print('Example: python main.py "3 + 5"')
         return
 
+    # join all args so both `main.py "3 + 5"` and `main.py 3 + 5` work
     expression = " ".join(sys.argv[1:])
     try:
         result = calculator.evaluate(expression)

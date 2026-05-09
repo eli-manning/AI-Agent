@@ -1,5 +1,3 @@
-# calculator/pkg/calculator.py
-
 class Calculator:
     def __init__(self):
         self.operators = {
@@ -27,6 +25,7 @@ class Calculator:
 
         for token in tokens:
             if token in self.operators:
+                # shunting-yard: flush higher/equal-precedence operators before pushing
                 while (
                     operators
                     and operators[-1] in self.operators
