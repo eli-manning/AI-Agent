@@ -1,9 +1,11 @@
 import os
 
 
+# returns (resolved_absolute_path, None) on success, or (None, error_string) on failure
 def validate_path(working_directory, path, check_is_file=False, writing=False, running=False):
     try:
         working_absolute = os.path.abspath(working_directory)
+        # normpath collapses ../ components before we do the containment check
         target_path = os.path.normpath(os.path.join(working_absolute, path))
 
         # commonpath detects traversal attempts like ../../etc/passwd after normpath resolves them
@@ -22,6 +24,7 @@ def validate_path(working_directory, path, check_is_file=False, writing=False, r
         if not writing and check_is_file and not os.path.isfile(target_path):
             return None, f'Error: File not found or is not a regular file: "{path}"'
 
+        # only allow executing .py files so the LLM can't run arbitrary binaries
         if running and not target_path.endswith(".py"):
             return None, f'Error: "{path}" is not a Python file'
 

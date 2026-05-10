@@ -9,13 +9,14 @@ def get_file_content(working_directory, file_path):
     try:
         with open(target, "r") as f:
             content = f.read(MAX_CHARS)
-            # read one extra byte to detect truncation without loading the whole file
+            # read one extra byte to detect truncation without loading the whole file into memory
             if f.read(1):
                 content += f'[...File "{file_path}" truncated at {MAX_CHARS} characters]'
         return content
     except Exception as e:
         return f"Error: {str(e)}"
-    
+
+# schema tells the model what this function does and what arguments it accepts
 schema_get_file_content = types.FunctionDeclaration(
     name="get_file_content",
     description="Reads and returns the content of a file at the specified path relative to the working directory",

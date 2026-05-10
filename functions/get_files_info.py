@@ -12,12 +12,14 @@ def get_files_info(working_directory, directory="."):
             item_path = os.path.join(target_dir, item)
             size_bytes = os.path.getsize(item_path)
             is_dir = os.path.isdir(item_path)
+            # plain-text format so the model can parse it naturally in its context window
             files_info.append(
                 f'- {item}: file_size={size_bytes} bytes, is_dir={is_dir}')
         return "\n".join(files_info)
     except Exception as e:
         return f"Error: {str(e)}"
 
+# schema tells the model what this function does and what arguments it accepts
 schema_get_files_info = types.FunctionDeclaration(
     name="get_files_info",
     description="Lists files in a specified directory relative to the working directory, providing file size and directory status",

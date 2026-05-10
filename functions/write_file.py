@@ -18,6 +18,7 @@ def write_file(working_directory, file_path, content):
     except Exception as e:
         return f"Error: {str(e)}"
 
+# schema tells the model what this function does and what arguments it accepts
 schema_write_file = types.FunctionDeclaration(
     name="write_file",
     description="Writes content to a file at the specified path relative to the working directory, creating parent directories if needed",

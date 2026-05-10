@@ -21,6 +21,7 @@ def run_python_file(working_directory, file_path, args=None):
             output_parts.append(
                 f"Process exited with code {subprocess_result.returncode}")
 
+        # always return something so the model knows the script ran but produced nothing
         if not subprocess_result.stdout and not subprocess_result.stderr:
             output_parts.append("No output produced")
         else:
@@ -30,10 +31,11 @@ def run_python_file(working_directory, file_path, args=None):
                 output_parts.append(f"STDERR: {subprocess_result.stderr}")
 
         return "\n".join(output_parts)
-    
+
     except Exception as e:
         return f"Error: executing Python file: {str(e)}"
 
+# schema tells the model what this function does and what arguments it accepts
 schema_run_python_file = types.FunctionDeclaration(
     name="run_python_file",
     description="Executes a Python file at the specified path relative to the working directory and returns its output",

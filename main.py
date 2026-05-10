@@ -25,26 +25,27 @@ def main():
         role="user", parts=[types.Part(text=args.user_prompt)])]
     verbose = args.verbose
 
+    # each iteration is one model turn; cap at 20 to prevent runaway tool-call chains
     for _ in range(20):
         response = generate_content(client, messages, verbose)
+        # append the model's response to history so it has context on the next turn
         if response.candidates:
             for candidate in response.candidates:
                 messages.append(candidate.content)
         function_results = execute_tool_calls(
             response, verbose) if response else None
+        # tool results go back as role="user" — genai SDK requirement, not an intuitive choice
         if function_results:
             messages.append(types.Content(role="user", parts=function_results))
         if response and response.text:
-            # model has given a final answer, end the loop
+            # model has given a final text answer with no pending tool calls, end the loop
             return
     # safety check to prevent infinite loops in case the model doesn't give a final answer after many turns
     print("Reached maximum number of turns without a final answer. Ending conversation.")
     exit()
 
 
-# Runs one agentic turn: sends messages, handles any tool calls, then returns.
-# Feed function_results back into messages and call again to continue the loop.
-
+# sends the current message history to the model and returns the raw response for one turn
 def generate_content(client, messages, verbose=False):
     try:
         response = client.models.generate_content(
@@ -57,12 +58,12 @@ def generate_content(client, messages, verbose=False):
             print("User prompt:", messages[0].parts[0].text)
             print("Prompt tokens:", response.usage_metadata.prompt_token_count)
             print("Response tokens:", response.usage_metadata.candidates_token_count)
-        # response.text is set when the model gives a final answer with no tool calls
+        # response.text is only set when the model gives a final answer with no tool calls
         if response.text:
             print(response.text)
         return response
 
-    # Catch API errors, especially rate limits
+    # catch API errors, especially rate limits
     except errors.ClientError as e:
         if "429" in str(e):
             print("Rate limit exceeded. Please try again later.")
