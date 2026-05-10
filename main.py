@@ -25,11 +25,26 @@ def main():
         role="user", parts=[types.Part(text=args.user_prompt)])]
     verbose = args.verbose
 
-    response = generate_content(client, messages, verbose)
-    execute_tool_calls(response, verbose) if response else None
+    for _ in range(20):
+        response = generate_content(client, messages, verbose)
+        if response.candidates:
+            for candidate in response.candidates:
+                messages.append(candidate.content)
+        function_results = execute_tool_calls(
+            response, verbose) if response else None
+        if function_results:
+            messages.append(types.Content(role="user", parts=function_results))
+        if response and response.text:
+            # model has given a final answer, end the loop
+            return
+    # safety check to prevent infinite loops in case the model doesn't give a final answer after many turns
+    print("Reached maximum number of turns without a final answer. Ending conversation.")
+    exit()
+
 
 # Runs one agentic turn: sends messages, handles any tool calls, then returns.
 # Feed function_results back into messages and call again to continue the loop.
+
 def generate_content(client, messages, verbose=False):
     try:
         response = client.models.generate_content(
@@ -74,6 +89,7 @@ def execute_tool_calls(response, verbose=False):
             function_results.append(function_response.parts[0])
             if verbose:
                 print(f"-> {fr.response}")
+            return function_results
 
 
 if __name__ == "__main__":
