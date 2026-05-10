@@ -8,6 +8,7 @@ from functions.call_function import available_functions, call_function
 
 
 def main():
+    # reads .env file so GEMINI_API_KEY is available via os.environ
     load_dotenv()
     api_key = os.environ.get("GEMINI_API_KEY")
     if api_key is None:
@@ -19,6 +20,7 @@ def main():
     parser.add_argument("user_prompt", type=str, help="User prompt")
     args = parser.parse_args()
 
+    # wrap the prompt in the Content format the API expects; this list grows as tool results are appended
     messages = [types.Content(
         role="user", parts=[types.Part(text=args.user_prompt)])]
     verbose = args.verbose
@@ -26,6 +28,8 @@ def main():
     generate_content(client, messages, verbose)
 
 
+# Runs one agentic turn: sends messages, handles any tool calls, then returns.
+# Feed function_results back into messages and call again to continue the loop.
 def generate_content(client, messages, verbose=False):
     try:
         response = client.models.generate_content(
@@ -38,8 +42,10 @@ def generate_content(client, messages, verbose=False):
             print("User prompt:", messages[0].parts[0].text)
             print("Prompt tokens:", response.usage_metadata.prompt_token_count)
             print("Response tokens:", response.usage_metadata.candidates_token_count)
+        # response.text is set when the model gives a final answer with no tool calls
         if response.text:
             print(response.text)
+        # response.function_calls is set when the model wants to invoke one or more tools
         if response.function_calls:
             function_results = []
             for function_call in response.function_calls:
@@ -47,11 +53,13 @@ def generate_content(client, messages, verbose=False):
 
                 if not function_response.parts:
                     raise RuntimeError("No function response parts received")
+                # unwrap the nested structure: Content -> Part -> FunctionResponse
                 fr = function_response.parts[0].function_response
                 if fr is None:
                     raise RuntimeError("No function response received")
                 if fr.response is None:
                     raise RuntimeError("No response payload received")
+                # collect each tool result to append to messages for the next turn
                 function_results.append(function_response.parts[0])
                 if verbose:
                     print(f"-> {fr.response}")
