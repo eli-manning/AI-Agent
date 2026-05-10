@@ -4,7 +4,7 @@ from google import genai
 from google.genai import types, errors
 import argparse
 from prompts import system_prompt
-from functions.call_function import available_functions
+from functions.call_function import available_functions, call_function
 
 
 def main():
@@ -38,11 +38,23 @@ def generate_content(client, messages, verbose=False):
             print("User prompt:", messages[0].parts[0].text)
             print("Prompt tokens:", response.usage_metadata.prompt_token_count)
             print("Response tokens:", response.usage_metadata.candidates_token_count)
-        print(response.text)
+        if response.text:
+            print(response.text)
         if response.function_calls:
+            function_results = []
             for function_call in response.function_calls:
-                print(
-                    f"Calling function: {function_call.name}({function_call.args})")
+                function_response = call_function(function_call, verbose)
+
+                if not function_response.parts:
+                    raise RuntimeError("No function response parts received")
+                fr = function_response.parts[0].function_response
+                if fr is None:
+                    raise RuntimeError("No function response received")
+                if fr.response is None:
+                    raise RuntimeError("No response payload received")
+                function_results.append(function_response.parts[0])
+                if verbose:
+                    print(f"-> {fr.response}")
 
     # Catch API errors, especially rate limits
     except errors.ClientError as e:
