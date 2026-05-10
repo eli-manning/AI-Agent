@@ -25,8 +25,8 @@ def main():
         role="user", parts=[types.Part(text=args.user_prompt)])]
     verbose = args.verbose
 
-    generate_content(client, messages, verbose)
-
+    response = generate_content(client, messages, verbose)
+    execute_tool_calls(response, verbose) if response else None
 
 # Runs one agentic turn: sends messages, handles any tool calls, then returns.
 # Feed function_results back into messages and call again to continue the loop.
@@ -45,24 +45,7 @@ def generate_content(client, messages, verbose=False):
         # response.text is set when the model gives a final answer with no tool calls
         if response.text:
             print(response.text)
-        # response.function_calls is set when the model wants to invoke one or more tools
-        if response.function_calls:
-            function_results = []
-            for function_call in response.function_calls:
-                function_response = call_function(function_call, verbose)
-
-                if not function_response.parts:
-                    raise RuntimeError("No function response parts received")
-                # unwrap the nested structure: Content -> Part -> FunctionResponse
-                fr = function_response.parts[0].function_response
-                if fr is None:
-                    raise RuntimeError("No function response received")
-                if fr.response is None:
-                    raise RuntimeError("No response payload received")
-                # collect each tool result to append to messages for the next turn
-                function_results.append(function_response.parts[0])
-                if verbose:
-                    print(f"-> {fr.response}")
+        return response
 
     # Catch API errors, especially rate limits
     except errors.ClientError as e:
@@ -70,6 +53,27 @@ def generate_content(client, messages, verbose=False):
             print("Rate limit exceeded. Please try again later.")
         else:
             print("Client error:", e)
+
+
+def execute_tool_calls(response, verbose=False):
+    # response.function_calls is set when the model wants to invoke one or more tools
+    if response.function_calls:
+        function_results = []
+        for function_call in response.function_calls:
+            function_response = call_function(function_call, verbose)
+
+            if not function_response.parts:
+                raise RuntimeError("No function response parts received")
+            # unwrap the nested structure: Content -> Part -> FunctionResponse
+            fr = function_response.parts[0].function_response
+            if fr is None:
+                raise RuntimeError("No function response received")
+            if fr.response is None:
+                raise RuntimeError("No response payload received")
+            # collect each tool result to append to messages for the next turn
+            function_results.append(function_response.parts[0])
+            if verbose:
+                print(f"-> {fr.response}")
 
 
 if __name__ == "__main__":
